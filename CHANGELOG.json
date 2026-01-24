@@ -1,0 +1,45 @@
+{
+  "ir_version": "1.0",
+  "project": "brandkit",
+  "repository": "https://github.com/grokify/brandkit",
+  "versioning": "semver",
+  "commit_convention": "conventional",
+  "releases": [
+    {
+      "version": "0.1.0",
+      "date": "2026-01-24",
+      "added": [
+        {
+          "description": "CLI command `brandkit white` for one-step white icon generation with background removal, color conversion, centering, and verification"
+        },
+        {
+          "description": "CLI command `brandkit convert` for SVG color conversion with support for hex, shorthand, and named colors"
+        },
+        {
+          "description": "CLI command `brandkit process` for full SVG processing pipeline (convert, center, verify)"
+        },
+        {
+          "description": "CLI command `brandkit analyze` for SVG geometry analysis (centering, padding, viewBox optimization)"
+        },
+        {
+          "description": "CLI command `brandkit verify` for pure vector validation (detects embedded base64, data URIs, binary references)"
+        },
+        {
+          "description": "Public `svg` package with `BoundingBox`, `ViewBox`, `ParsePath`, `CalculatePathBounds`, and file utilities"
+        },
+        {
+          "description": "Public `svg/convert` package for programmatic SVG color conversion with background removal and mask preservation"
+        },
+        {
+          "description": "Public `svg/analyze` package for programmatic SVG geometry analysis"
+        },
+        {
+          "description": "Public `svg/verify` package for programmatic pure vector validation"
+        },
+        {
+          "description": "Brand asset library with 36 brand icon directories and standardized SVG variants"
+        }
+      ]
+    }
+  ]
+}
