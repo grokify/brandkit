@@ -1,6 +1,6 @@
 module github.com/grokify/brandkit
 
-go 1.24.12
+go 1.24.11
 
 require (
 	github.com/JoshVarga/svgparser v0.0.0-20200804023048-5eaba627a7d1
