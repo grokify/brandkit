@@ -1,4 +1,11 @@
-# brandkit
+# BrandKit
+
+[![Build Status][build-status-svg]][build-status-url]
+[![Lint Status][lint-status-svg]][lint-status-url]
+[![Go Report Card][goreport-svg]][goreport-url]
+[![Docs][docs-godoc-svg]][docs-godoc-url]
+[![Visualization][viz-svg]][viz-url]
+[![License][license-svg]][license-url]
 
 A Go toolkit for processing brand icons — analyzing, verifying, and converting SVG files. Use it as a CLI tool or as a library in your own Go programs.
 
@@ -120,3 +127,18 @@ make build-all   # Cross-platform builds
 ## License
 
 MIT
+
+ [build-status-svg]: https://github.com/grokify/brandkit/actions/workflows/ci.yaml/badge.svg?branch=main
+ [build-status-url]: https://github.com/grokify/brandkit/actions/workflows/ci.yaml
+ [lint-status-svg]: https://github.com/grokify/brandkit/actions/workflows/lint.yaml/badge.svg?branch=main
+ [lint-status-url]: https://github.com/grokify/brandkit/actions/workflows/lint.yaml
+ [goreport-svg]: https://goreportcard.com/badge/github.com/grokify/brandkit
+ [goreport-url]: https://goreportcard.com/report/github.com/grokify/brandkit
+ [docs-godoc-svg]: https://pkg.go.dev/badge/github.com/grokify/brandkit
+ [docs-godoc-url]: https://pkg.go.dev/github.com/grokify/brandkit
+ [viz-svg]: https://img.shields.io/badge/visualizaton-Go-blue.svg
+ [viz-url]: https://mango-dune-07a8b7110.1.azurestaticapps.net/?repo=grokify%2Fbrandkit
+ [loc-svg]: https://tokei.rs/b1/github/grokify/brandkit
+ [repo-url]: https://github.com/grokify/brandkit
+ [license-svg]: https://img.shields.io/badge/license-MIT-blue.svg
+ [license-url]: https://github.com/grokify/brandkit/blob/master/LICENSE
