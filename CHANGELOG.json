@@ -6,7 +6,7 @@
   "commit_convention": "conventional",
   "releases": [
     {
-      "version": "0.2.0",
+      "version": "v0.2.0",
       "date": "2026-01-25",
       "added": [
         {
@@ -54,7 +54,7 @@
       ]
     },
     {
-      "version": "0.1.0",
+      "version": "v0.1.0",
       "date": "2026-01-24",
       "added": [
         {
