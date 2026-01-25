@@ -14,14 +14,42 @@
           "commit": "2c95642"
         },
         {
+          "description": "Go library API for icon processing: `ProcessWhite`, `ProcessColor` for programmatic SVG processing",
+          "commit": "ea6e409"
+        },
+        {
+          "description": "Go library API for recursive verification: `svg.ListSVGFilesRecursive`, `verify.DirectoryRecursive`",
+          "commit": "ab5324f"
+        },
+        {
+          "description": "CLI command `brandkit color` for creating centered color icons preserving original colors",
+          "commit": "8a8eecc"
+        },
+        {
+          "description": "CLI command `brandkit verify-all` for recursive pure vector verification (CI-friendly)",
+          "commit": "8a8eecc"
+        },
+        {
           "description": "17 new brand icons: bolt, bootstrap, dart, flutter, go, javascript, kotlin, lovable, openapi, postgresql, postman, python, react, replit, spring, v0, windsurf (total: 52 brands)",
           "commit": "205a287"
+        },
+        {
+          "description": "42 new `icon_color.svg` files for all brands with transparent backgrounds",
+          "commit": "bcf0c80"
+        },
+        {
+          "description": "GitHub Actions workflow `verify.yaml` for automated icon validation on PR/push",
+          "commit": "0358ff9"
         }
       ],
       "changed": [
         {
           "description": "Renamed `gcp` brand directory to `google-gcp` for clarity and consistency",
           "commit": "78afca3"
+        },
+        {
+          "description": "Refactored `brandkit white` CLI to use `ProcessWhite` library function",
+          "commit": "8a8eecc"
         }
       ]
     },
