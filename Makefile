@@ -1,4 +1,4 @@
-.PHONY: build clean test install lint deps white verify analyze
+.PHONY: build clean test install lint deps white verify verify-all analyze
 
 BINARY_NAME=brandkit
 BUILD_DIR=bin
@@ -33,9 +33,13 @@ white: build
 		$(BUILD_DIR)/$(BINARY_NAME) white $$orig -o $$dir/icon_white.svg; \
 	done
 
-# Verify all SVG files are pure vector
+# Verify SVG files in a single directory (non-recursive)
 verify: build
 	$(BUILD_DIR)/$(BINARY_NAME) verify brands/
+
+# Verify all SVG files recursively (for CI)
+verify-all: build
+	$(BUILD_DIR)/$(BINARY_NAME) verify-all brands/
 
 # Analyze all SVG files for centering
 analyze: build

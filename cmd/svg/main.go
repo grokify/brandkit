@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/grokify/brandkit"
 	"github.com/grokify/brandkit/svg"
 	"github.com/grokify/brandkit/svg/analyze"
 	"github.com/grokify/brandkit/svg/convert"
@@ -112,6 +113,55 @@ var verifyCmd = &cobra.Command{
 - External binary image references`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runVerify,
+}
+
+// verify-all command (recursive verification for CI)
+var verifyAllCmd = &cobra.Command{
+	Use:   "verify-all [path]",
+	Short: "Recursively verify all SVG files are pure vector",
+	Long: `Recursively verify all SVG files in a directory tree are pure vector images.
+
+This command is designed for CI pipelines to ensure all brand icons
+remain pure vector without embedded binary data.
+
+Examples:
+  brandkit verify-all brands/
+  brandkit verify-all .`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runVerifyAll,
+}
+
+func runVerifyAll(_ *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
+	results, err := verify.DirectoryRecursive(path)
+	if err != nil {
+		return fmt.Errorf("error: %w", err)
+	}
+
+	allValid := true
+	validCount := 0
+	for _, r := range results {
+		if !r.IsSuccess() {
+			allValid = false
+			fmt.Printf("✗ %s\n", r.FilePath)
+			for _, e := range r.Errors {
+				fmt.Printf("  Error: %s\n", e)
+			}
+		} else {
+			validCount++
+		}
+	}
+
+	fmt.Printf("\n✓ Verified %d/%d SVG files as pure vector\n", validCount, len(results))
+
+	if !allValid {
+		return fmt.Errorf("one or more files failed verification")
+	}
+	return nil
 }
 
 func runVerify(_ *cobra.Command, args []string) error {
@@ -372,19 +422,65 @@ Examples:
   brandkit white icon_orig.svg -o icon_white.svg
   brandkit white brands/anthropic/icon_orig.svg -o brands/anthropic/icon_white.svg`,
 	Args: cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		if whiteOutput == "" {
 			return fmt.Errorf("output path is required (-o, --output)")
 		}
-		// Set process flags to the standard white-icon preset
-		processOutput = whiteOutput
-		processColor = "ffffff"
-		processRemoveBackground = true
-		processIncludeStroke = true
-		processCenter = true
-		processStrict = true
-		return runProcess(cmd, args)
+		result, err := brandkit.ProcessWhite(args[0], whiteOutput)
+		if err != nil {
+			return err
+		}
+		printProcessResult(result)
+		return nil
 	},
+}
+
+// color command (preset for preserving original colors)
+var colorOutput string
+
+var colorCmd = &cobra.Command{
+	Use:   "color <input>",
+	Short: "Create centered color icon on transparent background",
+	Long: `Shortcut for creating a well-sized, centered icon preserving original colors.
+
+Equivalent to:
+  brandkit process <input> -o <output> --remove-background --center --strict
+
+This removes the background, centers the content, and verifies the result
+is pure vector while preserving the original colors.
+
+Examples:
+  brandkit color icon_orig.svg -o icon_color.svg
+  brandkit color brands/react/icon_orig.svg -o brands/react/icon_color.svg`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(_ *cobra.Command, args []string) error {
+		if colorOutput == "" {
+			return fmt.Errorf("output path is required (-o, --output)")
+		}
+		result, err := brandkit.ProcessColor(args[0], colorOutput)
+		if err != nil {
+			return err
+		}
+		printProcessResult(result)
+		return nil
+	},
+}
+
+// printProcessResult outputs the processing result to stdout.
+func printProcessResult(result *brandkit.ProcessResult) {
+	if result.BackgroundRemoved {
+		fmt.Printf("✓ Removed background element\n")
+	}
+	if result.ColorConverted {
+		fmt.Printf("✓ Color converted to %s\n", result.TargetColor)
+	}
+	if result.Centered {
+		fmt.Printf("✓ ViewBox centered: %s\n", result.SuggestedViewBox)
+	}
+	if result.Verified {
+		fmt.Printf("✓ Verified pure vector (%s)\n", strings.Join(result.VectorElements, ", "))
+	}
+	fmt.Printf("\n✓ Processed: %s → %s\n", filepath.Base(result.InputPath), filepath.Base(result.OutputPath))
 }
 
 func init() {
@@ -394,6 +490,9 @@ func init() {
 
 	// verify command
 	rootCmd.AddCommand(verifyCmd)
+
+	// verify-all command
+	rootCmd.AddCommand(verifyAllCmd)
 
 	// convert command
 	convertCmd.Flags().StringVarP(&convertOutput, "output", "o", "", "Output file path (required)")
@@ -415,4 +514,8 @@ func init() {
 	// white command
 	whiteCmd.Flags().StringVarP(&whiteOutput, "output", "o", "", "Output file path (required)")
 	rootCmd.AddCommand(whiteCmd)
+
+	// color command
+	colorCmd.Flags().StringVarP(&colorOutput, "output", "o", "", "Output file path (required)")
+	rootCmd.AddCommand(colorCmd)
 }
