@@ -2,6 +2,7 @@
 .env
 _*
 *.tar
+bin/
 coverage.txt
 debug.test
 main
