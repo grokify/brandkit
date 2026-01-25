@@ -1,0 +1,25 @@
+name: Verify Icons
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'brands/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'brands/**'
+  workflow_dispatch:
+jobs:
+  verify-icons:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.24.x
+      - name: Verify all SVG icons are pure vector
+        run: make verify-all
