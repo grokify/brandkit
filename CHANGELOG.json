@@ -6,6 +6,26 @@
   "commit_convention": "conventional",
   "releases": [
     {
+      "version": "0.2.0",
+      "date": "2026-01-25",
+      "added": [
+        {
+          "description": "Go library API for embedded icon retrieval: `GetIcon`, `GetIconWhite`, `GetIconColor`, `GetIconOrig`, `ListIcons`, `IconExists`, `NormalizeIconName`",
+          "commit": "2c95642"
+        },
+        {
+          "description": "17 new brand icons: bolt, bootstrap, dart, flutter, go, javascript, kotlin, lovable, openapi, postgresql, postman, python, react, replit, spring, v0, windsurf (total: 52 brands)",
+          "commit": "205a287"
+        }
+      ],
+      "changed": [
+        {
+          "description": "Renamed `gcp` brand directory to `google-gcp` for clarity and consistency",
+          "commit": "78afca3"
+        }
+      ]
+    },
+    {
       "version": "0.1.0",
       "date": "2026-01-24",
       "added": [
