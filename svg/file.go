@@ -49,3 +49,21 @@ func ListSVGFiles(dirPath string) ([]string, error) {
 func IsSVGFile(path string) bool {
 	return strings.HasSuffix(strings.ToLower(path), ".svg")
 }
+
+// ListSVGFilesRecursive returns all SVG files in a directory tree.
+func ListSVGFilesRecursive(dirPath string) ([]string, error) {
+	var files []string
+	err := filepath.WalkDir(dirPath, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && strings.HasSuffix(strings.ToLower(d.Name()), ".svg") {
+			files = append(files, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return files, nil
+}

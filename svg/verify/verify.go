@@ -123,3 +123,27 @@ func Directory(dirPath string) ([]*Result, error) {
 func (r *Result) IsSuccess() bool {
 	return r.IsValid && r.IsPureVector
 }
+
+// DirectoryRecursive validates all SVG files in a directory tree.
+func DirectoryRecursive(dirPath string) ([]*Result, error) {
+	files, err := svg.ListSVGFilesRecursive(dirPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read directory: %w", err)
+	}
+
+	var results []*Result
+	for _, filePath := range files {
+		result, err := SVG(filePath)
+		if err != nil {
+			results = append(results, &Result{
+				FilePath: filePath,
+				IsValid:  false,
+				Errors:   []string{err.Error()},
+			})
+			continue
+		}
+		results = append(results, result)
+	}
+
+	return results, nil
+}
