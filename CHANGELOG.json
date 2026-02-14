@@ -31,6 +31,11 @@
     {
       "version": "v0.2.0",
       "date": "2026-01-25",
+      "highlights": [
+        { "description": "Go library APIs for programmatic icon retrieval and processing" },
+        { "description": "New CLI commands `brandkit color` and `brandkit verify-all`" },
+        { "description": "17 new brand icons and 42 new `icon_color.svg` files (total: 52 brands)" }
+      ],
       "added": [
         { "description": "Go library API for embedded icon retrieval: `GetIcon`, `GetIconWhite`, `GetIconColor`, `GetIconOrig`, `ListIcons`, `IconExists`, `NormalizeIconName`", "commit": "2c95642" },
         { "description": "Go library API for icon processing: `ProcessWhite`, `ProcessColor` for programmatic SVG processing", "commit": "ea6e409" },
@@ -49,6 +54,11 @@
     {
       "version": "v0.1.0",
       "date": "2026-01-24",
+      "highlights": [
+        { "description": "CLI toolkit for one-command SVG icon processing workflows" },
+        { "description": "Go library packages for SVG analysis, conversion, and verification" },
+        { "description": "Brand asset library with 36 brand icon directories" }
+      ],
       "added": [
         { "description": "CLI command `brandkit white` for one-step white icon generation with background removal, color conversion, centering, and verification", "commit": "03f1bad" },
         { "description": "CLI command `brandkit convert` for SVG color conversion with support for hex, shorthand, and named colors", "commit": "03f1bad" },
