@@ -1,0 +1,24 @@
+{
+  "name": "brandkit-tools",
+  "version": "1.0.0",
+  "description": "Brandkit development tools including coordinate picker for SVG polygon creation",
+  "type": "module",
+  "main": "dist/coordinate-picker.js",
+  "types": "dist/coordinate-picker.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^1.6.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  },
+  "files": [
+    "dist",
+    "src"
+  ]
+}

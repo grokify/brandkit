@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVG Coordinate Picker - Brandkit</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h1 { margin-bottom: 10px; font-size: 1.5rem; }
+    .file-input-area {
+      background: #2a2a4a;
+      border: 2px dashed #4a4a8a;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 20px;
+      cursor: pointer;
+    }
+    .file-input-area:hover { border-color: #6a6aba; }
+    .file-input-area input { display: none; }
+    .container { display: flex; gap: 20px; flex-wrap: wrap; }
+    .marker {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      transform: translate(-50%, -100%);
+      pointer-events: auto;
+      z-index: 10;
+      cursor: pointer;
+    }
+    .marker:hover { transform: translate(-50%, -100%) scale(1.2); }
+    .marker svg { width: 100%; height: 100%; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
+    .marker-label {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.9);
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      white-space: nowrap;
+      font-weight: bold;
+      pointer-events: none;
+    }
+    .marker-shapes {
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 2px;
+      pointer-events: none;
+    }
+    .marker-shape-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      border: 1px solid #fff;
+    }
+
+    /* Pin context menu */
+    .pin-menu {
+      position: fixed;
+      background: #2a2a4a;
+      border: 1px solid #4a4a8a;
+      border-radius: 8px;
+      padding: 8px 0;
+      min-width: 180px;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .pin-menu-header {
+      padding: 6px 12px;
+      font-size: 12px;
+      color: #888;
+      border-bottom: 1px solid #3a3a5a;
+      margin-bottom: 4px;
+    }
+    .pin-menu-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pin-menu-item:hover { background: #3a3a5a; }
+    .pin-menu-item.danger { color: #e74c3c; }
+    .pin-menu-item .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .pin-menu-divider {
+      height: 1px;
+      background: #3a3a5a;
+      margin: 4px 0;
+    }
+    .sidebar { flex: 1; min-width: 350px; }
+    .coords-display {
+      background: #2a2a4a;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .size-info { font-size: 12px; color: #888; margin-top: 5px; }
+    .instructions {
+      background: #2a4a2a;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    /* Shape setup */
+    .setup-section {
+      background: #2a2a4a;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    .setup-section h3 { font-size: 14px; margin-bottom: 10px; }
+    .setup-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .setup-row label { font-size: 13px; }
+    .setup-row input[type="number"] {
+      width: 60px;
+      padding: 6px;
+      border: none;
+      border-radius: 4px;
+      background: #3a3a5a;
+      color: #fff;
+      font-size: 14px;
+    }
+    .setup-row select {
+      padding: 6px 10px;
+      border: none;
+      border-radius: 4px;
+      background: #3a3a5a;
+      color: #fff;
+      font-size: 14px;
+    }
+
+    /* Active shape indicator */
+    .active-shape {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    /* Shape cards */
+    .shapes-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .shape-card {
+      background: #2a2a4a;
+      border: 2px solid #3a3a5a;
+      border-radius: 8px;
+      padding: 10px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .shape-card.active { border-color: #4a9a4a; }
+    .shape-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .shape-card-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .shape-color-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+    }
+    .shape-card-points {
+      font-family: monospace;
+      font-size: 12px;
+      color: #aaa;
+      min-height: 20px;
+    }
+    .shape-card-output {
+      background: #1a1a3a;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+      margin-top: 8px;
+      cursor: pointer;
+      word-break: break-all;
+    }
+    .shape-card-output:hover { background: #2a2a4a; }
+
+    /* Buttons */
+    .buttons { margin: 15px 0; display: flex; gap: 10px; flex-wrap: wrap; }
+    button {
+      background: #4a4a8a;
+      border: none;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover { background: #5a5a9a; }
+    button.danger { background: #c0392b; }
+    button.danger:hover { background: #e74c3c; }
+    button.success { background: #27ae60; }
+    button.success:hover { background: #2ecc71; }
+    button:disabled { background: #444; cursor: not-allowed; }
+
+    /* Preview */
+    .preview-section {
+      margin-top: 15px;
+      padding: 15px;
+      background: #2a2a4a;
+      border-radius: 8px;
+    }
+    .preview-section h3 { font-size: 14px; margin-bottom: 10px; }
+    .svg-preview {
+      background: #000;
+      border-radius: 4px;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+    }
+    .svg-preview svg { max-width: 250px; max-height: 250px; }
+
+    /* Output */
+    .output-section {
+      margin-top: 15px;
+      padding: 15px;
+      background: #2a2a4a;
+      border-radius: 8px;
+    }
+    .output-section h3 { font-size: 14px; margin-bottom: 10px; }
+    .full-svg-output {
+      background: #1a1a3a;
+      padding: 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 200px;
+      overflow-y: auto;
+      cursor: pointer;
+    }
+    .full-svg-output:hover { background: #2a2a3a; }
+    .copy-hint { font-size: 11px; color: #666; margin-top: 5px; }
+
+    /* Zoom controls */
+    .zoom-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+      padding: 10px;
+      background: #2a2a4a;
+      border-radius: 8px;
+    }
+    .zoom-controls label { font-size: 13px; }
+    .zoom-controls button {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      font-size: 20px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .zoom-level {
+      min-width: 50px;
+      text-align: center;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .image-scroll-container {
+      overflow: auto;
+      max-width: 800px;
+      max-height: 700px;
+      border: 2px solid #444;
+      background: #000;
+    }
+    .image-container {
+      position: relative;
+      cursor: crosshair;
+      background: #000;
+      display: inline-block;
+      transform-origin: top left;
+    }
+    .image-container.empty {
+      cursor: default;
+      min-width: 600px;
+      min-height: 600px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .image-container.empty::after {
+      content: 'Load an image to begin';
+      color: #666;
+      font-size: 18px;
+    }
+    .image-container img {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <h1>SVG Coordinate Picker</h1>
+
+  <div class="file-input-area" onclick="document.getElementById('fileInput').click()">
+    <input type="file" id="fileInput" accept="image/*,.svg">
+    <p>📁 Click or drag an image file here (JPG, PNG, SVG)</p>
+  </div>
+
+  <div class="container">
+    <div>
+      <div class="image-scroll-container" id="scrollContainer">
+        <div class="image-container empty" id="imageContainer">
+          <img id="sourceImage" style="display:none;">
+        </div>
+      </div>
+      <div class="zoom-controls">
+        <label>Zoom:</label>
+        <button onclick="zoomOut()">−</button>
+        <span class="zoom-level" id="zoomLevel">100%</span>
+        <button onclick="zoomIn()">+</button>
+        <button onclick="resetZoom()">Reset</button>
+      </div>
+      <div class="coords-display">
+        Last click: <span id="lastCoord">-</span>
+        <div class="size-info">Image size: <span id="imageSize">-</span></div>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="instructions">
+        <strong>How to use:</strong><br>
+        1. Load an image<br>
+        2. Set number of shapes (polygons) below<br>
+        3. Click a shape card to select it, then click image to add vertices<br>
+        4. Switch shapes and continue adding vertices<br>
+        5. Copy individual polygons or the full SVG
+      </div>
+
+      <div class="setup-section">
+        <h3>Setup</h3>
+        <div class="setup-row">
+          <label>Number of shapes:</label>
+          <input type="number" id="numShapes" value="4" min="1" max="20">
+          <button onclick="setupShapes()">Set</button>
+        </div>
+        <div class="setup-row">
+          <label>Currently adding to:</label>
+          <span class="active-shape" id="activeShapeLabel" style="background:#e74c3c;">Shape 1</span>
+        </div>
+      </div>
+
+      <div class="buttons">
+        <button onclick="undoLast()">Undo Last</button>
+        <button class="danger" onclick="clearCurrentShape()">Clear Shape</button>
+        <button class="danger" onclick="clearAll()">Clear All</button>
+      </div>
+
+      <div class="shapes-container" id="shapesContainer">
+        <!-- Shape cards will be generated here -->
+      </div>
+
+      <div class="preview-section">
+        <h3>Live Preview</h3>
+        <div class="svg-preview" id="svgPreview">
+          <svg viewBox="0 0 400 400" width="250" height="250">
+            <rect width="400" height="400" fill="#000"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="output-section">
+        <h3>Full SVG Code</h3>
+        <div class="full-svg-output" id="fullSvgOutput" onclick="copyFullSvg()" title="Click to copy">
+&lt;svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"&gt;
+  &lt;rect width="400" height="400" fill="#000000"/&gt;
+&lt;/svg&gt;
+        </div>
+        <div class="copy-hint">Click to copy full SVG</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // Import core library functions
+    // When running via a server, uncomment the import below and comment out the inline definitions
+    // import * as CoordPicker from './dist/coordinate-picker.js';
+
+    // ========================================================================
+    // Core Library (inline version - same logic as src/coordinate-picker.ts)
+    // This is inlined for local file:// usage. For server usage, import from dist/
+    // ========================================================================
+
+    const DEFAULT_CONFIG = {
+      shapeColors: [
+        '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6',
+        '#1abc9c', '#e91e63', '#00bcd4', '#ff5722', '#8bc34a',
+      ],
+      zoomStep: 0.25,
+      minZoom: 0.5,
+      maxZoom: 4,
+      pinProximityThreshold: 5,
+    };
+
+    function createInitialState(numShapes = 4, config = DEFAULT_CONFIG) {
+      const shapes = [];
+      for (let i = 0; i < numShapes; i++) {
+        shapes.push({
+          color: config.shapeColors[i % config.shapeColors.length],
+          pinIds: [],
+        });
+      }
+      return { pins: [], shapes, activeShapeIndex: 0, pinIdCounter: 0, imageWidth: 400, imageHeight: 400, zoomLevel: 1 };
+    }
+
+    function findNearbyPin(pins, x, y, threshold = DEFAULT_CONFIG.pinProximityThreshold) {
+      return pins.find(p => Math.abs(p.x - x) < threshold && Math.abs(p.y - y) < threshold);
+    }
+
+    function createPin(state, x, y, displayX, displayY) {
+      const pin = { id: state.pinIdCounter++, x, y, displayX, displayY };
+      state.pins.push(pin);
+      return pin;
+    }
+
+    function deletePin(state, pinId) {
+      state.shapes.forEach(shape => {
+        const idx = shape.pinIds.indexOf(pinId);
+        if (idx !== -1) shape.pinIds.splice(idx, 1);
+      });
+      const pinIdx = state.pins.findIndex(p => p.id === pinId);
+      if (pinIdx !== -1) state.pins.splice(pinIdx, 1);
+    }
+
+    function getPinById(state, pinId) {
+      return state.pins.find(p => p.id === pinId);
+    }
+
+    function getShapesForPin(state, pinId) {
+      return state.shapes.filter(s => s.pinIds.includes(pinId));
+    }
+
+    function addPinToShapeLib(state, pinId, shapeIndex) {
+      if (shapeIndex < 0 || shapeIndex >= state.shapes.length) return false;
+      if (state.shapes[shapeIndex].pinIds.includes(pinId)) return false;
+      state.shapes[shapeIndex].pinIds.push(pinId);
+      return true;
+    }
+
+    function removePinFromShapeLib(state, pinId, shapeIndex) {
+      if (shapeIndex < 0 || shapeIndex >= state.shapes.length) return false;
+      const idx = state.shapes[shapeIndex].pinIds.indexOf(pinId);
+      if (idx === -1) return false;
+      state.shapes[shapeIndex].pinIds.splice(idx, 1);
+      return true;
+    }
+
+    function getShapePins(state, shapeIndex) {
+      if (shapeIndex < 0 || shapeIndex >= state.shapes.length) return [];
+      return state.shapes[shapeIndex].pinIds.map(id => getPinById(state, id)).filter(p => p !== undefined);
+    }
+
+    function setNumShapesLib(state, numShapes, config = DEFAULT_CONFIG) {
+      while (state.shapes.length < numShapes) {
+        state.shapes.push({ color: config.shapeColors[state.shapes.length % config.shapeColors.length], pinIds: [] });
+      }
+      if (state.shapes.length > numShapes) state.shapes.length = numShapes;
+      if (state.activeShapeIndex >= numShapes) state.activeShapeIndex = 0;
+    }
+
+    function generatePolygonPoints(pins) {
+      return pins.map(p => `${p.x},${p.y}`).join(' ');
+    }
+
+    function generateFullSVG(state, options = {}) {
+      const { backgroundColor = '#000000', polygonFill = '#00FF00', includeBackground = true } = options;
+      const polygons = state.shapes.map(shape => {
+        const pins = shape.pinIds.map(id => getPinById(state, id)).filter(p => p !== undefined);
+        if (pins.length < 3) return null;
+        return `<polygon points="${generatePolygonPoints(pins)}" fill="${polygonFill}"/>`;
+      }).filter(p => p !== null);
+      const bgRect = includeBackground ? `\n  <rect width="${state.imageWidth}" height="${state.imageHeight}" fill="${backgroundColor}"/>` : '';
+      const polySvg = polygons.length > 0 ? '\n' + polygons.map(p => `  ${p}`).join('\n') : '';
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${state.imageWidth} ${state.imageHeight}">${bgRect}${polySvg}\n</svg>`;
+    }
+
+    function zoomInLib(state, config = DEFAULT_CONFIG) {
+      if (state.zoomLevel < config.maxZoom) state.zoomLevel = Math.min(state.zoomLevel + config.zoomStep, config.maxZoom);
+      return state.zoomLevel;
+    }
+
+    function zoomOutLib(state, config = DEFAULT_CONFIG) {
+      if (state.zoomLevel > config.minZoom) state.zoomLevel = Math.max(state.zoomLevel - config.zoomStep, config.minZoom);
+      return state.zoomLevel;
+    }
+
+    function resetZoomLib(state) {
+      state.zoomLevel = 1;
+      return state.zoomLevel;
+    }
+
+    function clearAllPins(state) {
+      state.pins = [];
+      state.shapes.forEach(shape => { shape.pinIds = []; });
+      state.pinIdCounter = 0;
+    }
+
+    // ========================================================================
+    // UI State & DOM Integration
+    // ========================================================================
+
+    let state = createInitialState(4);
+    let imageLoaded = false;
+    let activeMenu = null;
+
+    const fileInput = document.getElementById('fileInput');
+    const imageContainer = document.getElementById('imageContainer');
+    const sourceImage = document.getElementById('sourceImage');
+
+    // Initialize
+    renderShapeCards();
+    updateAll();
+
+    // File input handling
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) loadImage(file);
+    });
+
+    // Drag and drop
+    document.querySelector('.file-input-area').addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.currentTarget.style.borderColor = '#6a6aba';
+    });
+
+    document.querySelector('.file-input-area').addEventListener('dragleave', (e) => {
+      e.currentTarget.style.borderColor = '#4a4a8a';
+    });
+
+    document.querySelector('.file-input-area').addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.currentTarget.style.borderColor = '#4a4a8a';
+      const file = e.dataTransfer.files[0];
+      if (file) loadImage(file);
+    });
+
+    function loadImage(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        sourceImage.src = e.target.result;
+        sourceImage.style.display = 'block';
+        sourceImage.onload = () => {
+          state.imageWidth = sourceImage.naturalWidth;
+          state.imageHeight = sourceImage.naturalHeight;
+          document.getElementById('imageSize').textContent = `${state.imageWidth} × ${state.imageHeight}`;
+          imageContainer.classList.remove('empty');
+          imageContainer.style.minWidth = '';
+          imageContainer.style.minHeight = '';
+          imageLoaded = true;
+          state.zoomLevel = 1;
+          clearAllMarkers();
+          updateZoomDisplay();
+          updateAll();
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+
+    imageContainer.addEventListener('click', (e) => {
+      if (!imageLoaded) return;
+      if (e.target.closest('.marker')) return;
+
+      const rect = sourceImage.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      const x = Math.round(clickX / state.zoomLevel);
+      const y = Math.round(clickY / state.zoomLevel);
+      const displayX = clickX / state.zoomLevel;
+      const displayY = clickY / state.zoomLevel;
+
+      addPointToShape(x, y, displayX, displayY);
+    });
+
+    // Expose functions globally for onclick handlers
+    window.setupShapes = function() {
+      const numShapes = parseInt(document.getElementById('numShapes').value) || 4;
+      setNumShapesLib(state, numShapes);
+      renderShapeCards();
+      updateAll();
+    };
+
+    document.addEventListener('click', (e) => {
+      if (activeMenu && !e.target.closest('.pin-menu') && !e.target.closest('.marker')) {
+        closeMenu();
+      }
+    });
+
+    window.closeMenu = function() {
+      if (activeMenu) {
+        activeMenu.remove();
+        activeMenu = null;
+      }
+    };
+
+    function showPinMenu(pinId, clientX, clientY) {
+      closeMenu();
+      const pin = getPinById(state, pinId);
+      if (!pin) return;
+
+      const menu = document.createElement('div');
+      menu.className = 'pin-menu';
+      menu.style.left = `${clientX}px`;
+      menu.style.top = `${clientY}px`;
+
+      let menuHtml = `<div class="pin-menu-header">Pin at (${pin.x}, ${pin.y})</div>`;
+
+      state.shapes.forEach((shape, i) => {
+        if (!shape.pinIds.includes(pinId)) {
+          menuHtml += `<div class="pin-menu-item" onclick="addPinToShape(${pinId}, ${i}); closeMenu();"><span class="dot" style="background:${shape.color}"></span>Add to Shape ${i + 1}</div>`;
+        }
+      });
+
+      const inShapes = state.shapes.filter(s => s.pinIds.includes(pinId));
+      if (inShapes.length > 0) {
+        menuHtml += `<div class="pin-menu-divider"></div>`;
+        state.shapes.forEach((shape, i) => {
+          if (shape.pinIds.includes(pinId)) {
+            menuHtml += `<div class="pin-menu-item" onclick="removePinFromShape(${pinId}, ${i}); closeMenu();"><span class="dot" style="background:${shape.color}"></span>Remove from Shape ${i + 1}</div>`;
+          }
+        });
+      }
+
+      menuHtml += `<div class="pin-menu-divider"></div><div class="pin-menu-item danger" onclick="deletePinUI(${pinId}); closeMenu();">🗑️ Delete Pin</div>`;
+
+      menu.innerHTML = menuHtml;
+      document.body.appendChild(menu);
+      activeMenu = menu;
+
+      const rect = menu.getBoundingClientRect();
+      if (rect.right > window.innerWidth) menu.style.left = `${clientX - rect.width}px`;
+      if (rect.bottom > window.innerHeight) menu.style.top = `${clientY - rect.height}px`;
+    }
+
+    window.addPinToShape = function(pinId, shapeIndex) {
+      addPinToShapeLib(state, pinId, shapeIndex);
+      updateMarkerDisplay(pinId);
+      updateAll();
+    };
+
+    window.removePinFromShape = function(pinId, shapeIndex) {
+      removePinFromShapeLib(state, pinId, shapeIndex);
+      updateMarkerDisplay(pinId);
+      updateAll();
+    };
+
+    window.deletePinUI = function(pinId) {
+      deletePin(state, pinId);
+      const markerEl = document.getElementById(`marker-${pinId}`);
+      if (markerEl) markerEl.remove();
+      updateAll();
+    };
+
+    function renderShapeCards() {
+      const container = document.getElementById('shapesContainer');
+      container.innerHTML = state.shapes.map((shape, i) => {
+        const shapePins = getShapePins(state, i);
+        return `
+        <div class="shape-card ${i === state.activeShapeIndex ? 'active' : ''}" onclick="selectShape(${i})">
+          <div class="shape-card-header">
+            <div class="shape-card-title">
+              <span class="shape-color-dot" style="background:${shape.color}"></span>Shape ${i + 1}
+            </div>
+            <span style="font-size:12px;color:#888;">${shapePins.length} points</span>
+          </div>
+          <div class="shape-card-points">${shapePins.length > 0 ? shapePins.map(p => `(${p.x},${p.y})`).join(' → ') : '<em>Click image or existing pin to add vertices...</em>'}</div>
+          <div class="shape-card-output" onclick="event.stopPropagation(); copyShapePolygon(${i})" title="Click to copy">${generatePolygonStringUI(i)}</div>
+        </div>`;
+      }).join('');
+
+      const label = document.getElementById('activeShapeLabel');
+      label.textContent = `Shape ${state.activeShapeIndex + 1}`;
+      label.style.background = state.shapes[state.activeShapeIndex].color;
+    }
+
+    window.selectShape = function(index) {
+      state.activeShapeIndex = index;
+      renderShapeCards();
+    };
+
+    function addPointToShape(x, y, displayX, displayY) {
+      const shape = state.shapes[state.activeShapeIndex];
+      const existingPin = findNearbyPin(state.pins, x, y);
+
+      let pin;
+      if (existingPin) {
+        pin = existingPin;
+        if (!shape.pinIds.includes(pin.id)) {
+          shape.pinIds.push(pin.id);
+          updateMarkerDisplay(pin.id);
+        }
+      } else {
+        pin = createPin(state, x, y, displayX, displayY);
+        shape.pinIds.push(pin.id);
+        createMarkerElement(pin);
+      }
+
+      document.getElementById('lastCoord').textContent = `(${x}, ${y}) → Shape ${state.activeShapeIndex + 1}`;
+      updateAll();
+    }
+
+    function createMarkerElement(pin) {
+      const markerEl = document.createElement('div');
+      markerEl.className = 'marker';
+      markerEl.id = `marker-${pin.id}`;
+      markerEl.dataset.pinId = pin.id;
+      markerEl.style.left = `${pin.displayX * state.zoomLevel}px`;
+      markerEl.style.top = `${pin.displayY * state.zoomLevel}px`;
+
+      updateMarkerContent(markerEl, pin);
+
+      markerEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showPinMenu(pin.id, e.clientX, e.clientY);
+      });
+
+      imageContainer.appendChild(markerEl);
+    }
+
+    function updateMarkerContent(markerEl, pin) {
+      const shapesWithPin = getShapesForPin(state, pin.id);
+      const primaryColor = shapesWithPin.length > 0 ? shapesWithPin[0].color : '#888';
+      const shapeDots = shapesWithPin.map(s => `<span class="marker-shape-dot" style="background:${s.color}"></span>`).join('');
+
+      markerEl.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="${primaryColor}"><path d="M12 0C7.58 0 4 3.58 4 8c0 5.25 8 13 8 13s8-7.75 8-13c0-4.42-3.58-8-8-8zm0 11c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg>
+        <div class="marker-label" style="background:${primaryColor};">(${pin.x},${pin.y})</div>
+        ${shapesWithPin.length > 1 ? `<div class="marker-shapes">${shapeDots}</div>` : ''}`;
+    }
+
+    function updateMarkerDisplay(pinId) {
+      const pin = getPinById(state, pinId);
+      const markerEl = document.getElementById(`marker-${pinId}`);
+      if (pin && markerEl) updateMarkerContent(markerEl, pin);
+    }
+
+    function updateAll() {
+      renderShapeCards();
+      updatePreview();
+      updateFullSvgOutput();
+    }
+
+    function generatePolygonStringUI(shapeIndex) {
+      const shapePins = getShapePins(state, shapeIndex);
+      if (shapePins.length < 3) return `<polygon points="..." fill="${state.shapes[shapeIndex].color}"/> (need ${3 - shapePins.length} more)`;
+      return `<polygon points="${generatePolygonPoints(shapePins)}" fill="#00FF00"/>`;
+    }
+
+    window.copyShapePolygon = function(index) {
+      const shapePins = getShapePins(state, index);
+      if (shapePins.length < 3) { alert('Need at least 3 points to create a polygon'); return; }
+      const polygonStr = `<polygon points="${generatePolygonPoints(shapePins)}" fill="#00FF00"/>`;
+      navigator.clipboard.writeText(polygonStr).then(() => {
+        const cards = document.querySelectorAll('.shape-card-output');
+        if (cards[index]) {
+          const orig = cards[index].style.background;
+          cards[index].style.background = '#2ecc71';
+          setTimeout(() => cards[index].style.background = orig, 300);
+        }
+      });
+    };
+
+    window.undoLast = function() {
+      const shape = state.shapes[state.activeShapeIndex];
+      if (shape.pinIds.length > 0) {
+        const removedPinId = shape.pinIds.pop();
+        const stillUsed = state.shapes.some(s => s.pinIds.includes(removedPinId));
+        if (stillUsed) {
+          updateMarkerDisplay(removedPinId);
+        } else {
+          const pinIdx = state.pins.findIndex(p => p.id === removedPinId);
+          if (pinIdx !== -1) state.pins.splice(pinIdx, 1);
+          const markerEl = document.getElementById(`marker-${removedPinId}`);
+          if (markerEl) markerEl.remove();
+        }
+        updateAll();
+      }
+    };
+
+    window.clearCurrentShape = function() {
+      const shape = state.shapes[state.activeShapeIndex];
+      const pinIdsToCheck = [...shape.pinIds];
+      shape.pinIds = [];
+
+      pinIdsToCheck.forEach(pinId => {
+        const stillUsed = state.shapes.some(s => s.pinIds.includes(pinId));
+        if (stillUsed) {
+          updateMarkerDisplay(pinId);
+        } else {
+          const pinIdx = state.pins.findIndex(p => p.id === pinId);
+          if (pinIdx !== -1) state.pins.splice(pinIdx, 1);
+          const markerEl = document.getElementById(`marker-${pinId}`);
+          if (markerEl) markerEl.remove();
+        }
+      });
+      updateAll();
+    };
+
+    function clearAllMarkers() {
+      document.querySelectorAll('.marker').forEach(el => el.remove());
+      clearAllPins(state);
+    }
+
+    window.clearAll = function() {
+      clearAllMarkers();
+      updateAll();
+    };
+
+    function updatePreview() {
+      const preview = document.getElementById('svgPreview');
+      const polygonsSvg = state.shapes.map(s => {
+        const shapePins = getShapePins(state, state.shapes.indexOf(s));
+        if (shapePins.length < 3) return null;
+        return `<polygon points="${generatePolygonPoints(shapePins)}" fill="#00FF00"/>`;
+      }).filter(p => p).join('\n          ');
+
+      preview.innerHTML = `<svg viewBox="0 0 ${state.imageWidth} ${state.imageHeight}" width="250" height="250"><rect width="${state.imageWidth}" height="${state.imageHeight}" fill="#000"/>${polygonsSvg}</svg>`;
+    }
+
+    function updateFullSvgOutput() {
+      document.getElementById('fullSvgOutput').textContent = generateFullSVG(state);
+    }
+
+    window.copyFullSvg = function() {
+      const text = document.getElementById('fullSvgOutput').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const el = document.getElementById('fullSvgOutput');
+        const orig = el.style.background;
+        el.style.background = '#2ecc71';
+        setTimeout(() => el.style.background = orig, 300);
+      });
+    };
+
+    function updateZoomDisplay() {
+      const img = document.getElementById('sourceImage');
+      if (imageLoaded) {
+        img.style.width = `${state.imageWidth * state.zoomLevel}px`;
+        img.style.height = `${state.imageHeight * state.zoomLevel}px`;
+      }
+      document.getElementById('zoomLevel').textContent = `${Math.round(state.zoomLevel * 100)}%`;
+
+      state.pins.forEach(pin => {
+        const markerEl = document.getElementById(`marker-${pin.id}`);
+        if (markerEl) {
+          markerEl.style.left = `${pin.displayX * state.zoomLevel}px`;
+          markerEl.style.top = `${pin.displayY * state.zoomLevel}px`;
+        }
+      });
+    }
+
+    window.zoomIn = function() {
+      zoomInLib(state);
+      updateZoomDisplay();
+    };
+
+    window.zoomOut = function() {
+      zoomOutLib(state);
+      updateZoomDisplay();
+    };
+
+    window.resetZoom = function() {
+      resetZoomLib(state);
+      updateZoomDisplay();
+    };
+  </script>
+</body>
+</html>
