@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  
+  <!-- Shape 1: Top center -->
+  <polygon points="200,50 330,124 265,161 135,87" fill="#ffffff"/>
+  <!-- Shape 2: Right side (vertical edge at x=330) -->
+  <polygon points="265,161 200,198 330,272 330,198" fill="#ffffff"/>
+  <!-- Shape 3: Left side (vertical edge at x=70) -->
+  <polygon points="200,198 135,235 70,198 70,124" fill="#ffffff"/>
+  <!-- Shape 4: Bottom center -->
+  <polygon points="135,235 265,309 200,346 70,272" fill="#ffffff"/>
+</svg>
