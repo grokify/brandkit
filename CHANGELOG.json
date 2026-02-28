@@ -6,6 +6,50 @@
   "commitConvention": "conventional",
   "releases": [
     {
+      "version": "v0.4.0",
+      "date": "2026-02-26",
+      "highlights": [
+        { "description": "SVG security scanning to detect XSS and session hijacking threats" },
+        { "description": "SVG sanitization to remove malicious elements while preserving valid content" },
+        { "description": "Security scanning integrated into processing pipelines with CI support" }
+      ],
+      "added": [
+        { "description": "Public `svg/security` package for programmatic security scanning with 7 `ThreatType` values: `ThreatScript`, `ThreatEventHandler`, `ThreatExternalRef`, `ThreatAnimation`, `ThreatStyleBlock`, `ThreatLink`, `ThreatXMLEntity`" },
+        { "description": "Security scanning functions: `security.SVG()`, `security.SVGWithLevel()`, `security.Directory()`, `security.DirectoryRecursive()`, `security.ScanContent()`, `security.ScanContentWithLevel()`" },
+        { "description": "Scan levels: `ScanLevelStrict` (all threats) and `ScanLevelStandard` (critical/high only)" },
+        { "description": "Sanitization functions: `security.Sanitize()`, `security.SanitizeContent()` with configurable `SanitizeOptions`" },
+        { "description": "Team report generation: `security.GenerateReport()` outputs multi-agent-spec team-report JSON format" },
+        { "description": "CLI command `brandkit security-scan` with `--report`, `--strict`, `--project`, `--version` flags" },
+        { "description": "CLI command `brandkit security-scan-all` for recursive security scanning with JSON report output" },
+        { "description": "CLI command `brandkit sanitize` for removing threats from SVG files with selective removal options" },
+        { "description": "Makefile targets `security-scan-all` and `sanitize-all` for batch operations" }
+      ],
+      "changed": [
+        { "description": "CLI commands `brandkit white` and `brandkit color` now perform security scanning by default" },
+        { "description": "Added `--insecure` flag to `white` and `color` commands to warn instead of fail on threats" },
+        { "description": "Library functions `ProcessWhite()` and `ProcessColor()` now include security scanning in pipeline" },
+        { "description": "`ProcessResult` struct extended with `SecurityScanned` and `SecurityThreats` fields" }
+      ],
+      "security": [
+        { "description": "Detects script elements (`<script>`) and self-closing script tags (critical)" },
+        { "description": "Detects dangerous URI schemes: `javascript:`, `vbscript:`, `data:text/html` (critical)" },
+        { "description": "Detects event handler attributes (`onclick`, `onload`, `onerror`, `onmouseover`, etc.) (critical)" },
+        { "description": "Detects external references: `href=\"http://...\"`, `xlink:href`, `foreignObject`, `url()` in styles, external `<use>` refs (high)" },
+        { "description": "Detects XML entities: `<!DOCTYPE>`, `<!ENTITY>` declarations for XXE prevention (high)" },
+        { "description": "Detects animation elements: `<animate>`, `<animateTransform>`, `<animateMotion>`, `<set>` (medium)" },
+        { "description": "Detects `<style>` blocks that may contain malicious CSS (low)" },
+        { "description": "Detects `<a>` anchor/link elements unnecessary for static images (medium)" }
+      ],
+      "infrastructure": [
+        { "description": "GitHub Actions workflow `verify.yaml` updated to include security scanning step" }
+      ],
+      "tests": [
+        { "description": "24 unit tests for security scanning covering all 7 threat types and scan levels" },
+        { "description": "Tests verify sanitized output remains valid SVG and passes security scan" },
+        { "description": "Tests cover ScanLevelStrict vs ScanLevelStandard behavior differences" }
+      ]
+    },
+    {
       "version": "v0.3.0",
       "date": "2026-02-14",
       "highlights": [
