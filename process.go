@@ -8,6 +8,7 @@ import (
 
 	"github.com/grokify/brandkit/svg/analyze"
 	"github.com/grokify/brandkit/svg/convert"
+	"github.com/grokify/brandkit/svg/security"
 	"github.com/grokify/brandkit/svg/verify"
 )
 
@@ -22,11 +23,14 @@ type ProcessResult struct {
 	SuggestedViewBox  string
 	Verified          bool
 	VectorElements    []string
+	SecurityScanned   bool
+	SecurityThreats   []security.Threat
 }
 
 // ProcessWhite creates a white icon on transparent background.
 // It removes background elements, converts all colors to white,
-// centers the content, and verifies the result is pure vector.
+// centers the content, verifies the result is pure vector, and
+// performs security scanning.
 //
 // Equivalent to CLI: brandkit white <input> -o <output>
 func ProcessWhite(inputPath, outputPath string) (*ProcessResult, error) {
@@ -36,12 +40,14 @@ func ProcessWhite(inputPath, outputPath string) (*ProcessResult, error) {
 		includeStroke:    true,
 		center:           true,
 		strict:           true,
+		securityScan:     true,
 	})
 }
 
 // ProcessColor creates a centered color icon on transparent background.
-// It removes background elements, centers the content, and verifies
-// the result is pure vector while preserving original colors.
+// It removes background elements, centers the content, verifies
+// the result is pure vector while preserving original colors, and
+// performs security scanning.
 //
 // Equivalent to CLI: brandkit color <input> -o <output>
 func ProcessColor(inputPath, outputPath string) (*ProcessResult, error) {
@@ -51,6 +57,7 @@ func ProcessColor(inputPath, outputPath string) (*ProcessResult, error) {
 		includeStroke:    false, // Irrelevant since color is empty (no conversion happens)
 		center:           true,
 		strict:           true,
+		securityScan:     true,
 	})
 }
 
@@ -60,6 +67,7 @@ type processOptions struct {
 	includeStroke    bool
 	center           bool
 	strict           bool
+	securityScan     bool
 }
 
 func process(inputPath, outputPath string, opts processOptions) (*ProcessResult, error) {
@@ -152,6 +160,21 @@ func process(inputPath, outputPath string, opts processOptions) (*ProcessResult,
 
 		result.Verified = true
 		result.VectorElements = verifyResult.VectorElements
+	}
+
+	// Step 4: Security scan (if enabled)
+	if opts.securityScan {
+		secResult, err := security.SVG(outputPath)
+		if err != nil {
+			return result, fmt.Errorf("security scan failed: %w", err)
+		}
+
+		result.SecurityScanned = true
+		result.SecurityThreats = secResult.Threats
+
+		if !secResult.IsSuccess() {
+			return result, fmt.Errorf("SVG contains security threats: %d threats detected", len(secResult.Threats))
+		}
 	}
 
 	return result, nil
