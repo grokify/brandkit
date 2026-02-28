@@ -1,4 +1,4 @@
-.PHONY: build clean test install lint deps white verify verify-all analyze
+.PHONY: build clean test install lint deps white verify verify-all analyze security-scan-all sanitize-all
 
 BINARY_NAME=brandkit
 BUILD_DIR=bin
@@ -44,6 +44,16 @@ verify-all: build
 # Analyze all SVG files for centering
 analyze: build
 	$(BUILD_DIR)/$(BINARY_NAME) analyze brands/ --fix
+
+# Security scan all SVG files recursively (for CI)
+security-scan-all: build
+	$(BUILD_DIR)/$(BINARY_NAME) security-scan-all brands/
+
+# Sanitize all brand SVGs (removes malicious elements)
+sanitize-all: build
+	@for svg in $$(find brands -name "*.svg"); do \
+		$(BUILD_DIR)/$(BINARY_NAME) sanitize $$svg -o $$svg.tmp && mv $$svg.tmp $$svg; \
+	done
 
 build-all:
 	GOOS=darwin GOARCH=amd64 go build -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 $(CMD_DIR)
