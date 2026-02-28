@@ -1,0 +1,81 @@
+site_name: BrandKit
+site_description: A Go toolkit for processing brand icons — analyzing, verifying, and converting SVG files
+site_url: https://grokify.github.io/brandkit/
+repo_url: https://github.com/grokify/brandkit
+repo_name: grokify/brandkit
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - tables
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/grokify/brandkit
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - CLI Reference:
+    - Overview: cli/index.md
+    - white: cli/white.md
+    - color: cli/color.md
+    - convert: cli/convert.md
+    - process: cli/process.md
+    - analyze: cli/analyze.md
+    - verify: cli/verify.md
+    - security-scan: cli/security-scan.md
+    - sanitize: cli/sanitize.md
+  - Library API:
+    - Overview: library/index.md
+    - svg: library/svg.md
+    - svg/analyze: library/analyze.md
+    - svg/convert: library/convert.md
+    - svg/verify: library/verify.md
+    - svg/security: library/security.md
+  - Security:
+    - Overview: security/index.md
+    - Threat Types: security/threats.md
+    - Scanning: security/scanning.md
+    - Sanitization: security/sanitization.md
+    - Reports: security/reports.md
+  - Brand Assets: brands.md
+  - Tools:
+    - Overview: tools/index.md
+    - Coordinate Picker: tools/coordinate-picker.html
+  - Changelog: changelog.md
