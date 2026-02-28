@@ -62,6 +62,14 @@ var eventHandlerRemovalPatterns = []sanitizePattern{
 	{regexp.MustCompile(`(?i)\s+on[a-z]+\s*=\s*[^\s>"']+`), "", "unquoted event handler attribute", ThreatEventHandler},
 }
 
+// XML entity removal patterns.
+var xmlEntityRemovalPatterns = []sanitizePattern{
+	// Remove DOCTYPE declarations (entire line)
+	{regexp.MustCompile(`(?i)<!DOCTYPE[^>]*>`), "", "DOCTYPE declaration", ThreatXMLEntity},
+	// Remove ENTITY declarations
+	{regexp.MustCompile(`(?i)<!ENTITY[^>]*>`), "", "ENTITY declaration", ThreatXMLEntity},
+}
+
 // External reference removal patterns.
 var externalRefRemovalPatterns = []sanitizePattern{
 	// Replace external href with empty
@@ -118,6 +126,9 @@ func SanitizeContent(content string, opts SanitizeOptions) (string, []Threat) {
 	}
 	if opts.RemoveAll || opts.RemoveExternalRefs {
 		patterns = append(patterns, externalRefRemovalPatterns...)
+	}
+	if opts.RemoveAll {
+		patterns = append(patterns, xmlEntityRemovalPatterns...)
 	}
 
 	// Apply each pattern
