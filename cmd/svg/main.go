@@ -14,6 +14,7 @@ import (
 	"github.com/grokify/brandkit/svg"
 	"github.com/grokify/brandkit/svg/analyze"
 	"github.com/grokify/brandkit/svg/convert"
+	"github.com/grokify/brandkit/svg/security"
 	"github.com/grokify/brandkit/svg/verify"
 )
 
@@ -418,6 +419,8 @@ Equivalent to:
 This removes the background, converts all colors to white, centers the content,
 and verifies the result is pure vector.
 
+Security scanning is performed by default. Use --insecure to warn instead of fail.
+
 Examples:
   brandkit white icon_orig.svg -o icon_white.svg
   brandkit white brands/anthropic/icon_orig.svg -o brands/anthropic/icon_white.svg`,
@@ -431,12 +434,305 @@ Examples:
 			return err
 		}
 		printProcessResult(result)
-		return nil
+		return runSecurityScanOnOutput(whiteOutput, whiteInsecure)
 	},
 }
 
 // color command (preset for preserving original colors)
-var colorOutput string
+var (
+	colorOutput   string
+	colorInsecure bool
+)
+
+// white command insecure flag
+var whiteInsecure bool
+
+// security-scan command flags
+var (
+	securityScanReport  string
+	securityScanStrict  bool
+	securityScanProject string
+	securityScanVersion string
+)
+
+// security-scan command
+var securityScanCmd = &cobra.Command{
+	Use:   "security-scan [path]",
+	Short: "Scan SVG files for security threats",
+	Long: `Scan SVG files for security threats including:
+- Script elements and javascript: URIs (critical)
+- Event handler attributes (onclick, onload, etc.) (critical)
+- External references (http:// URLs, foreignObject) (high)
+- XML entities (DOCTYPE, ENTITY) (high)
+- Animation elements (medium, strict mode only)
+- Style blocks (low, strict mode only)
+- Anchor links (medium, strict mode only)
+
+Use --strict for comprehensive scanning (default: true).
+Use --report to output JSON report file.
+
+Examples:
+  brandkit security-scan icon.svg
+  brandkit security-scan brands/
+  brandkit security-scan brands/ --report=report.json`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runSecurityScan,
+}
+
+func runSecurityScan(_ *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
+	// Determine scan level
+	level := security.ScanLevelStandard
+	if securityScanStrict {
+		level = security.ScanLevelStrict
+	}
+
+	info, err := svg.GetPathInfo(path)
+	if err != nil {
+		return fmt.Errorf("error: %w", err)
+	}
+
+	var results []*security.Result
+	if info.IsDir {
+		// Use level-aware scanning
+		files, err := svg.ListSVGFiles(path)
+		if err != nil {
+			return fmt.Errorf("error: %w", err)
+		}
+		for _, filePath := range files {
+			result, err := security.SVGWithLevel(filePath, level)
+			if err != nil {
+				results = append(results, &security.Result{
+					FilePath: filePath,
+					IsSecure: false,
+					Errors:   []string{err.Error()},
+				})
+				continue
+			}
+			results = append(results, result)
+		}
+	} else {
+		result, err := security.SVGWithLevel(path, level)
+		if err != nil {
+			return fmt.Errorf("error: %w", err)
+		}
+		results = []*security.Result{result}
+	}
+
+	// Generate report if requested
+	if securityScanReport != "" {
+		project := securityScanProject
+		if project == "" {
+			project = "brandkit"
+		}
+		ver := securityScanVersion
+		if ver == "" {
+			ver = version
+		}
+		report := security.GenerateReport(results, project, ver)
+		reportJSON, err := report.ToJSON()
+		if err != nil {
+			return fmt.Errorf("failed to generate report: %w", err)
+		}
+		if err := os.WriteFile(securityScanReport, reportJSON, 0600); err != nil {
+			return fmt.Errorf("failed to write report: %w", err)
+		}
+		fmt.Printf("✓ Report written to %s\n", securityScanReport)
+	}
+
+	allSecure := true
+	for _, r := range results {
+		if !r.IsSuccess() {
+			allSecure = false
+			fmt.Printf("✗ %s\n", filepath.Base(r.FilePath))
+			for _, t := range r.Threats {
+				fmt.Printf("  [%s] %s: %s\n", t.Type, t.Description, t.Match)
+			}
+			for _, e := range r.Errors {
+				fmt.Printf("  Error: %s\n", e)
+			}
+		} else {
+			fmt.Printf("✓ %s\n", filepath.Base(r.FilePath))
+		}
+	}
+
+	if !allSecure {
+		return fmt.Errorf("one or more files have security threats")
+	}
+	return nil
+}
+
+// security-scan-all command (recursive for CI)
+var securityScanAllCmd = &cobra.Command{
+	Use:   "security-scan-all [path]",
+	Short: "Recursively scan all SVG files for security threats",
+	Long: `Recursively scan all SVG files in a directory tree for security threats.
+
+This command is designed for CI pipelines to ensure all brand icons
+are free from XSS and other security vulnerabilities.
+
+Use --report to output a JSON report in team-report format.
+
+Examples:
+  brandkit security-scan-all brands/
+  brandkit security-scan-all brands/ --report=security-report.json
+  brandkit security-scan-all . --strict=false`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runSecurityScanAll,
+}
+
+func runSecurityScanAll(_ *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
+	// Determine scan level
+	level := security.ScanLevelStandard
+	if securityScanStrict {
+		level = security.ScanLevelStrict
+	}
+
+	// Get files recursively
+	files, err := svg.ListSVGFilesRecursive(path)
+	if err != nil {
+		return fmt.Errorf("error: %w", err)
+	}
+
+	var results []*security.Result
+	for _, filePath := range files {
+		result, err := security.SVGWithLevel(filePath, level)
+		if err != nil {
+			results = append(results, &security.Result{
+				FilePath:     filePath,
+				IsSecure:     false,
+				ThreatCounts: make(map[security.ThreatType]int),
+				Errors:       []string{err.Error()},
+			})
+			continue
+		}
+		results = append(results, result)
+	}
+
+	// Generate report if requested
+	if securityScanReport != "" {
+		project := securityScanProject
+		if project == "" {
+			project = "brandkit"
+		}
+		ver := securityScanVersion
+		if ver == "" {
+			ver = version
+		}
+		report := security.GenerateReport(results, project, ver)
+		reportJSON, err := report.ToJSON()
+		if err != nil {
+			return fmt.Errorf("failed to generate report: %w", err)
+		}
+		if err := os.WriteFile(securityScanReport, reportJSON, 0600); err != nil {
+			return fmt.Errorf("failed to write report: %w", err)
+		}
+		fmt.Printf("✓ Report written to %s\n", securityScanReport)
+	}
+
+	allSecure := true
+	secureCount := 0
+	threatCounts := make(map[security.ThreatType]int)
+
+	for _, r := range results {
+		if !r.IsSuccess() {
+			allSecure = false
+			fmt.Printf("✗ %s\n", r.FilePath)
+			for _, t := range r.Threats {
+				fmt.Printf("  [%s] %s: %s\n", t.Type, t.Description, t.Match)
+				threatCounts[t.Type]++
+			}
+			for _, e := range r.Errors {
+				fmt.Printf("  Error: %s\n", e)
+			}
+		} else {
+			secureCount++
+		}
+	}
+
+	fmt.Printf("\n✓ Scanned %d/%d SVG files as secure\n", secureCount, len(results))
+
+	if !allSecure {
+		fmt.Println("\nThreat summary:")
+		for threatType, count := range threatCounts {
+			fmt.Printf("  %s: %d\n", threatType, count)
+		}
+		return fmt.Errorf("one or more files have security threats")
+	}
+	return nil
+}
+
+// sanitize command
+var (
+	sanitizeOutput              string
+	sanitizeRemoveScripts       bool
+	sanitizeRemoveEventHandlers bool
+	sanitizeRemoveExternalRefs  bool
+	sanitizeRemoveAll           bool
+)
+
+var sanitizeCmd = &cobra.Command{
+	Use:   "sanitize <input>",
+	Short: "Remove security threats from SVG files",
+	Long: `Remove security threats from an SVG file.
+
+By default, all threat types are removed. Use flags to selectively remove
+specific threat types.
+
+Examples:
+  brandkit sanitize malicious.svg -o clean.svg
+  brandkit sanitize icon.svg -o icon.svg  # In-place (overwrites)
+  brandkit sanitize icon.svg -o clean.svg --remove-scripts
+  brandkit sanitize icon.svg -o clean.svg --remove-event-handlers`,
+	Args: cobra.ExactArgs(1),
+	RunE: runSanitize,
+}
+
+func runSanitize(_ *cobra.Command, args []string) error {
+	inputPath := args[0]
+
+	if sanitizeOutput == "" {
+		return fmt.Errorf("output path is required (-o, --output)")
+	}
+
+	opts := security.SanitizeOptions{
+		RemoveScripts:       sanitizeRemoveScripts,
+		RemoveEventHandlers: sanitizeRemoveEventHandlers,
+		RemoveExternalRefs:  sanitizeRemoveExternalRefs,
+		RemoveAll:           sanitizeRemoveAll,
+	}
+
+	// If no specific options set, default to RemoveAll
+	if !opts.RemoveScripts && !opts.RemoveEventHandlers && !opts.RemoveExternalRefs {
+		opts.RemoveAll = true
+	}
+
+	result, err := security.Sanitize(inputPath, sanitizeOutput, opts)
+	if err != nil {
+		return err
+	}
+
+	if result.Sanitized {
+		fmt.Printf("✓ Sanitized %s → %s\n", filepath.Base(inputPath), filepath.Base(sanitizeOutput))
+		fmt.Printf("  Removed %d threats:\n", len(result.ThreatsRemoved))
+		for _, t := range result.ThreatsRemoved {
+			fmt.Printf("    [%s] %s\n", t.Type, t.Description)
+		}
+	} else {
+		fmt.Printf("✓ No threats found in %s\n", filepath.Base(inputPath))
+	}
+
+	return nil
+}
 
 var colorCmd = &cobra.Command{
 	Use:   "color <input>",
@@ -448,6 +744,8 @@ Equivalent to:
 
 This removes the background, centers the content, and verifies the result
 is pure vector while preserving the original colors.
+
+Security scanning is performed by default. Use --insecure to warn instead of fail.
 
 Examples:
   brandkit color icon_orig.svg -o icon_color.svg
@@ -462,7 +760,7 @@ Examples:
 			return err
 		}
 		printProcessResult(result)
-		return nil
+		return runSecurityScanOnOutput(colorOutput, colorInsecure)
 	},
 }
 
@@ -481,6 +779,27 @@ func printProcessResult(result *brandkit.ProcessResult) {
 		fmt.Printf("✓ Verified pure vector (%s)\n", strings.Join(result.VectorElements, ", "))
 	}
 	fmt.Printf("\n✓ Processed: %s → %s\n", filepath.Base(result.InputPath), filepath.Base(result.OutputPath))
+}
+
+// runSecurityScanOnOutput performs a security scan on the output file and handles the result.
+func runSecurityScanOnOutput(outputPath string, insecureMode bool) error {
+	secResult, err := security.SVG(outputPath)
+	if err != nil {
+		return fmt.Errorf("security scan failed: %w", err)
+	}
+	if !secResult.IsSuccess() {
+		fmt.Printf("⚠ Security threats detected:\n")
+		for _, t := range secResult.Threats {
+			fmt.Printf("  [%s] %s: %s\n", t.Type, t.Description, t.Match)
+		}
+		if !insecureMode {
+			return fmt.Errorf("security scan failed: %d threats detected", len(secResult.Threats))
+		}
+		fmt.Println("  (--insecure mode: continuing despite threats)")
+	} else {
+		fmt.Println("✓ Security scan passed")
+	}
+	return nil
 }
 
 func init() {
@@ -513,9 +832,33 @@ func init() {
 
 	// white command
 	whiteCmd.Flags().StringVarP(&whiteOutput, "output", "o", "", "Output file path (required)")
+	whiteCmd.Flags().BoolVar(&whiteInsecure, "insecure", false, "Warn on security threats instead of failing")
 	rootCmd.AddCommand(whiteCmd)
 
 	// color command
 	colorCmd.Flags().StringVarP(&colorOutput, "output", "o", "", "Output file path (required)")
+	colorCmd.Flags().BoolVar(&colorInsecure, "insecure", false, "Warn on security threats instead of failing")
 	rootCmd.AddCommand(colorCmd)
+
+	// security-scan command
+	securityScanCmd.Flags().StringVar(&securityScanReport, "report", "", "Output JSON report file path")
+	securityScanCmd.Flags().BoolVar(&securityScanStrict, "strict", true, "Strict mode: detect all threats including style blocks and animations")
+	securityScanCmd.Flags().StringVar(&securityScanProject, "project", "", "Project name for report (default: brandkit)")
+	securityScanCmd.Flags().StringVar(&securityScanVersion, "version", "", "Version for report (default: CLI version)")
+	rootCmd.AddCommand(securityScanCmd)
+
+	// security-scan-all command (shares flags with security-scan)
+	securityScanAllCmd.Flags().StringVar(&securityScanReport, "report", "", "Output JSON report file path")
+	securityScanAllCmd.Flags().BoolVar(&securityScanStrict, "strict", true, "Strict mode: detect all threats including style blocks and animations")
+	securityScanAllCmd.Flags().StringVar(&securityScanProject, "project", "", "Project name for report (default: brandkit)")
+	securityScanAllCmd.Flags().StringVar(&securityScanVersion, "version", "", "Version for report (default: CLI version)")
+	rootCmd.AddCommand(securityScanAllCmd)
+
+	// sanitize command
+	sanitizeCmd.Flags().StringVarP(&sanitizeOutput, "output", "o", "", "Output file path (required)")
+	sanitizeCmd.Flags().BoolVar(&sanitizeRemoveScripts, "remove-scripts", false, "Remove script elements only")
+	sanitizeCmd.Flags().BoolVar(&sanitizeRemoveEventHandlers, "remove-event-handlers", false, "Remove event handler attributes only")
+	sanitizeCmd.Flags().BoolVar(&sanitizeRemoveExternalRefs, "remove-external-refs", false, "Remove external URLs only")
+	sanitizeCmd.Flags().BoolVar(&sanitizeRemoveAll, "remove-all", true, "Remove all threat types (default)")
+	rootCmd.AddCommand(sanitizeCmd)
 }
