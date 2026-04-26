@@ -10,6 +10,7 @@ import (
 	"github.com/grokify/brandkit/svg/convert"
 	"github.com/grokify/brandkit/svg/security"
 	"github.com/grokify/brandkit/svg/verify"
+	"github.com/grokify/mogo/os/osutil"
 )
 
 // ProcessResult contains the result of a processing operation.
@@ -127,7 +128,7 @@ func process(inputPath, outputPath string, opts processOptions) (*ProcessResult,
 			contentStr = viewBoxRe.ReplaceAllString(contentStr, newViewBox)
 		}
 
-		if err := os.WriteFile(outputPath, []byte(contentStr), 0600); err != nil {
+		if err := osutil.WriteFileSecure(outputPath, []byte(contentStr), 0600); err != nil {
 			_ = os.Remove(tempOutput)
 			return result, fmt.Errorf("failed to write centered file: %w", err)
 		}

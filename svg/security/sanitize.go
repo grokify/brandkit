@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+
+	"github.com/grokify/mogo/os/osutil"
 )
 
 // SanitizeOptions specifies which threat types to remove during sanitization.
@@ -103,7 +105,7 @@ func Sanitize(inputPath, outputPath string, opts SanitizeOptions) (*SanitizeResu
 	result.ThreatsRemoved = threats
 	result.Sanitized = len(threats) > 0
 
-	if err := os.WriteFile(outputPath, []byte(sanitized), 0600); err != nil {
+	if err := osutil.WriteFileSecure(outputPath, []byte(sanitized), 0600); err != nil {
 		result.Error = fmt.Errorf("failed to write output file: %w", err)
 		return result, result.Error
 	}

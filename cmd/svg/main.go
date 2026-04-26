@@ -358,7 +358,7 @@ func runProcess(_ *cobra.Command, args []string) error {
 			contentStr = viewBoxRe.ReplaceAllString(contentStr, newViewBox)
 		}
 
-		if err := os.WriteFile(processOutput, []byte(contentStr), 0600); err != nil {
+		if err := os.WriteFile(processOutput, []byte(contentStr), 0600); err != nil { //nolint:gosec // G703: Path from CLI flag
 			_ = os.Remove(tempOutput) // best-effort cleanup
 			return fmt.Errorf("failed to write centered file: %w", err)
 		}

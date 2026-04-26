@@ -6,6 +6,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/grokify/mogo/os/osutil"
 )
 
 // Options configures the color conversion behavior.
@@ -112,7 +114,7 @@ func SVG(inputPath, outputPath string, opts Options) (*Result, error) {
 
 	// If no color specified, just copy the file (possibly with background removed)
 	if targetColor == "" {
-		if err := os.WriteFile(outputPath, []byte(contentStr), 0600); err != nil {
+		if err := osutil.WriteFileSecure(outputPath, []byte(contentStr), 0600); err != nil {
 			result.Error = fmt.Errorf("failed to write file: %w", err)
 			return result, result.Error
 		}
@@ -124,7 +126,7 @@ func SVG(inputPath, outputPath string, opts Options) (*Result, error) {
 	converted := convertColors(contentStr, targetColor, opts)
 
 	// Write output file
-	if err := os.WriteFile(outputPath, []byte(converted), 0600); err != nil {
+	if err := osutil.WriteFileSecure(outputPath, []byte(converted), 0600); err != nil {
 		result.Error = fmt.Errorf("failed to write file: %w", err)
 		return result, result.Error
 	}
